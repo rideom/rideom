@@ -1,0 +1,159 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================= USER =================
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String?
+  phone     String   @unique
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driver    Driver?
+
+ 
+}
+
+// ================= OTP =================
+model OTP {
+  id        Int      @id @default(autoincrement())
+  phone     String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+}
+
+
+// ================= DRIVER =================
+model Driver {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  vehicleType    VehicleType
+  vehicleNumber  String
+  vehicleModel   String
+
+  isVerified     Boolean  @default(false)
+  verifiedAt     DateTime?
+  rejectedReason String?
+
+  isOnline       Boolean  @default(false)
+  lastSeenAt     DateTime?
+
+  totalRides     Int      @default(0)
+  rating         Float    @default(5.0)
+  totalRatings   Int      @default(0)
+
+  walletBalance  Float    @default(0.0)
+
+  bankAccount    String?
+  ifscCode       String?
+  accountName    String?
+
+  city           String   @default("Morigaon")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  documents      DriverDocument[]
+  location       DriverLocation?
+  earnings       DriverEarning[]
+}
+
+// ================= DRIVER DOCUMENT =================
+model DriverDocument {
+  id         Int          @id @default(autoincrement())
+  driverId   Int
+  driver     Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  type       DocumentType
+  fileUrl    String
+  publicId   String?
+
+  isVerified Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+// ================= DRIVER LOCATION =================
+model DriverLocation {
+  id        Int     @id @default(autoincrement())
+  driverId  Int     @unique
+  driver    Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  lat       Float
+  lng       Float
+  heading   Float?
+  speed     Float?
+
+  updatedAt DateTime @updatedAt
+}
+
+// ================= DRIVER EARNING =================
+model DriverEarning {
+  id          Int           @id @default(autoincrement())
+  driverId    Int
+  driver      Driver        @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  amount      Float
+  type        EarningType
+  status      EarningStatus @default(PENDING)
+  description String?
+
+  rideId      Int?
+  deliveryId  Int?
+
+  createdAt   DateTime      @default(now())
+}
+
+// ================= ENUMS =================
+enum Role {
+  USER
+  DRIVER
+  ADMIN
+}
+
+enum VehicleType {
+  BIKE
+  AUTO
+  CAR
+  ERICKSHAW
+}
+
+enum DocumentType {
+  AADHAAR
+  DRIVING_LICENCE
+  VEHICLE_RC
+  VEHICLE_PHOTO
+  PROFILE_PHOTO
+}
+
+enum EarningType {
+  RIDE
+  DELIVERY
+  BONUS
+  ADJUSTMENT
+}
+
+enum EarningStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+
+
+
