@@ -7,6 +7,7 @@ require("dotenv").config();
 const authRoutes = require("./src/routes/auth.route");
 const protectedRoute = require("./src/routes/protected.route");
 const driverRoutes = require("./src/routes/driver.route");
+const fareRoutes = require("./src/routes/fare.route");
 
 const app = express();
 const server = http.createServer(app);
@@ -44,6 +45,7 @@ app.get("/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/protected", protectedRoute);   // fixed typo: proctedRoute → protectedRoute
 app.use("/api/driver", driverRoutes);
+app.use("/api/fare", fareRoutes);
 
 // ✅ 404 Handler
 app.use((req, res) => {

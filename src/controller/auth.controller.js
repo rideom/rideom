@@ -16,6 +16,7 @@ const sendOtp = async (req, res) => {
 //verify otp controller
 const verifyOtp = async (req, res) => {
     const {phone,code} = req.body;
+    // console.log("phone",phone ,"code ",code)
     try {
         await otpService.verifyOtp(phone,code)
 
