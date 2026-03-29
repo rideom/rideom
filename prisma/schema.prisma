@@ -22,6 +22,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   driver    Driver?
+  customerRides Ride[]  @relation("CustomerRides")
 
  
 }
@@ -71,6 +72,7 @@ model Driver {
   documents      DriverDocument[]
   location       DriverLocation?
   earnings       DriverEarning[]
+  rides          Ride[]
 }
 
 // ================= DRIVER DOCUMENT =================
@@ -113,10 +115,52 @@ model DriverEarning {
   status      EarningStatus @default(PENDING)
   description String?
 
-  rideId      Int?
+  rideId      Int? @unique
+  ride        Ride?         @relation(fields: [rideId], references: [id])
   deliveryId  Int?
 
   createdAt   DateTime      @default(now())
+}
+
+// ================= RIDE =================
+model Ride {
+  id             Int        @id @default(autoincrement())
+
+  customerId     Int
+  customer       User       @relation("CustomerRides", fields: [customerId], references: [id])
+
+  driverId       Int?
+  driver         Driver?    @relation(fields: [driverId], references: [id])
+
+  vehicleType    VehicleType
+
+  pickupLat      Float
+  pickupLng      Float
+  pickupAddress  String
+
+  dropLat        Float
+  dropLng        Float
+  dropAddress    String
+
+  fare           Float
+  distanceKm     Float
+  durationMin    Int
+
+  otp            String
+
+  status         RideStatus @default(PENDING)
+
+  cancelReason   String?
+  cancelledBy    String?
+
+  createdAt      DateTime   @default(now())
+  acceptedAt     DateTime?
+  arrivedAt      DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+
+  earning        DriverEarning?
 }
 
 // ================= ENUMS =================
@@ -151,6 +195,16 @@ enum EarningType {
 enum EarningStatus {
   PENDING
   PAID
+  CANCELLED
+}
+
+
+enum RideStatus {
+  PENDING
+  ACCEPTED
+  DRIVER_ARRIVED
+  ONGOING
+  COMPLETED
   CANCELLED
 }
 

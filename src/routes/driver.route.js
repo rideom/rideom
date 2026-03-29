@@ -32,7 +32,7 @@ router.post(
 router.get(
   "/profile",
   authMiddleware,
-  roleMiddleware("DRIVER"),
+  roleMiddleware("DRIVER","USER"),
   getDriverProfile,
 );
 
