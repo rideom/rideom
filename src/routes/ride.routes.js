@@ -501,14 +501,12 @@
 
 // module.exports = router;
 
-
-
 const express = require("express");
-const router  = express.Router();
-const { getDistance }  = require("geolib");
+const router = express.Router();
+const { getDistance } = require("geolib");
 const { calculateFareEstimates } = require("../helpers/fare.helpers");
-const { emitToUser }   = require("../../server");
-import { prisma } from "../config/database";
+const { emitToUser } = require("../../server");
+const { prisma } = require("../config/database");
 
 // ─────────────────────────────────────────
 // GET /api/rides/fare-estimate
@@ -518,10 +516,17 @@ router.get("/fare-estimate", async (req, res) => {
     const { fromLat, fromLng, toLat, toLng } = req.query;
 
     if (!fromLat || !fromLng || !toLat || !toLng) {
-      return res.status(400).json({ success: false, error: "Missing coordinates" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Missing coordinates" });
     }
 
-    const { estimates } = calculateFareEstimates({ fromLat, fromLng, toLat, toLng });
+    const { estimates } = calculateFareEstimates({
+      fromLat,
+      fromLng,
+      toLat,
+      toLng,
+    });
     return res.json({ success: true, data: { estimates } });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -535,7 +540,14 @@ router.get("/nearby-drivers", async (req, res) => {
   try {
     const { lat, lng, vehicleType, radiusKm = 20 } = req.query;
 
-    console.log("🔍 Nearby search — lat:", lat, "lng:", lng, "type:", vehicleType);
+    console.log(
+      "🔍 Nearby search — lat:",
+      lat,
+      "lng:",
+      lng,
+      "type:",
+      vehicleType,
+    );
 
     if (!lat || !lng || !vehicleType) {
       return res.status(400).json({ success: false, error: "Missing params" });
@@ -543,20 +555,22 @@ router.get("/nearby-drivers", async (req, res) => {
 
     const drivers = await prisma.driver.findMany({
       where: {
-        isOnline:    true,
+        isOnline: true,
         // isVerified: true,  ← removed for testing
         vehicleType: vehicleType.toUpperCase(),
-        location:    { isNot: null },
+        location: { isNot: null },
       },
       include: {
-        user:     { select: { id: true, name: true, phone: true } }, // ← no pushToken
+        user: { select: { id: true, name: true, phone: true } }, // ← no pushToken
         location: true,
       },
     });
 
     console.log("✅ Online drivers with location:", drivers.length);
-    drivers.forEach(d => {
-      console.log(`   Driver ${d.id} — ${d.vehicleType} — lat:${d.location?.lat} lng:${d.location?.lng}`);
+    drivers.forEach((d) => {
+      console.log(
+        `   Driver ${d.id} — ${d.vehicleType} — lat:${d.location?.lat} lng:${d.location?.lng}`,
+      );
     });
 
     const nearby = drivers
@@ -587,24 +601,43 @@ router.get("/nearby-drivers", async (req, res) => {
 router.post("/book", async (req, res) => {
   try {
     const {
-      customerId, driverId, vehicleType,
-      pickupLat, pickupLng, pickupAddress,
-      dropLat,   dropLng,   dropAddress,
-      fare, distanceKm, durationMin,
+      customerId,
+      driverId,
+      vehicleType,
+      pickupLat,
+      pickupLng,
+      pickupAddress,
+      dropLat,
+      dropLng,
+      dropAddress,
+      fare,
+      distanceKm,
+      durationMin,
     } = req.body;
 
     console.log("📦 Book ride request:", req.body);
 
-    if (!customerId || !driverId || !vehicleType ||
-        !pickupLat || !pickupLng || !pickupAddress ||
-        !dropLat   || !dropLng   || !dropAddress   || !fare) {
-      return res.status(400).json({ success: false, error: "Missing required fields" });
+    if (
+      !customerId ||
+      !driverId ||
+      !vehicleType ||
+      !pickupLat ||
+      !pickupLng ||
+      !pickupAddress ||
+      !dropLat ||
+      !dropLng ||
+      !dropAddress ||
+      !fare
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Missing required fields" });
     }
 
     // Check driver is online
     const driver = await prisma.driver.findFirst({
       where: {
-        id:       parseInt(driverId),
+        id: parseInt(driverId),
         isOnline: true,
         // isVerified: true,  ← removed for testing
       },
@@ -624,7 +657,7 @@ router.post("/book", async (req, res) => {
     const activeRide = await prisma.ride.findFirst({
       where: {
         driverId: driver.id,
-        status:   { in: ["PENDING", "ACCEPTED", "DRIVER_ARRIVED", "ONGOING"] },
+        status: { in: ["PENDING", "ACCEPTED", "DRIVER_ARRIVED", "ONGOING"] },
       },
     });
 
@@ -641,20 +674,20 @@ router.post("/book", async (req, res) => {
     // Create ride
     const ride = await prisma.ride.create({
       data: {
-        customerId:   parseInt(customerId),
-        driverId:     driver.id,
-        vehicleType:  vehicleType.toUpperCase(),
-        pickupLat:    parseFloat(pickupLat),
-        pickupLng:    parseFloat(pickupLng),
+        customerId: parseInt(customerId),
+        driverId: driver.id,
+        vehicleType: vehicleType.toUpperCase(),
+        pickupLat: parseFloat(pickupLat),
+        pickupLng: parseFloat(pickupLng),
         pickupAddress,
-        dropLat:      parseFloat(dropLat),
-        dropLng:      parseFloat(dropLng),
+        dropLat: parseFloat(dropLat),
+        dropLng: parseFloat(dropLng),
         dropAddress,
-        fare:         parseFloat(fare),
-        distanceKm:   parseFloat(distanceKm || 0),
-        durationMin:  parseInt(durationMin   || 0),
+        fare: parseFloat(fare),
+        distanceKm: parseFloat(distanceKm || 0),
+        durationMin: parseInt(durationMin || 0),
         otp,
-        status:       "PENDING",
+        status: "PENDING",
       },
       include: {
         customer: { select: { id: true, name: true, phone: true } },
@@ -671,7 +704,10 @@ router.post("/book", async (req, res) => {
 
     // ✅ Socket.io only — no push notification
     const emitted = emitToUser(driver.userId, "new_ride_request", ride);
-    console.log("📡 Socket emit result:", emitted ? "✅ delivered" : "❌ driver not connected");
+    console.log(
+      "📡 Socket emit result:",
+      emitted ? "✅ delivered" : "❌ driver not connected",
+    );
 
     return res.json({ success: true, data: { ride } });
   } catch (err) {
@@ -688,14 +724,17 @@ router.patch("/:id/accept", async (req, res) => {
     const rideId = parseInt(req.params.id);
 
     const ride = await prisma.ride.findUnique({ where: { id: rideId } });
-    if (!ride) return res.status(404).json({ success: false, error: "Ride not found" });
+    if (!ride)
+      return res.status(404).json({ success: false, error: "Ride not found" });
     if (ride.status !== "PENDING") {
-      return res.status(400).json({ success: false, error: "Ride is no longer pending" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Ride is no longer pending" });
     }
 
     const updated = await prisma.ride.update({
       where: { id: rideId },
-      data:  { status: "ACCEPTED", acceptedAt: new Date() },
+      data: { status: "ACCEPTED", acceptedAt: new Date() },
       include: {
         customer: { select: { id: true } },
         driver: {
@@ -704,10 +743,19 @@ router.patch("/:id/accept", async (req, res) => {
       },
     });
 
-    console.log("✅ Ride accepted:", rideId, "Notifying customer:", updated.customerId);
+    console.log(
+      "✅ Ride accepted:",
+      rideId,
+      "Notifying customer:",
+      updated.customerId,
+    );
 
     // ✅ Socket only
-    const emitted = emitToUser(updated.customerId, "ride_status_update", updated);
+    const emitted = emitToUser(
+      updated.customerId,
+      "ride_status_update",
+      updated,
+    );
     console.log("📡 Customer notified:", emitted ? "✅" : "❌ not connected");
 
     return res.json({ success: true, data: { ride: updated } });
@@ -725,7 +773,7 @@ router.patch("/:id/arrived", async (req, res) => {
 
     const updated = await prisma.ride.update({
       where: { id: rideId },
-      data:  { status: "DRIVER_ARRIVED", arrivedAt: new Date() },
+      data: { status: "DRIVER_ARRIVED", arrivedAt: new Date() },
       include: { customer: { select: { id: true } } },
     });
 
@@ -743,7 +791,7 @@ router.patch("/:id/arrived", async (req, res) => {
 // ─────────────────────────────────────────
 router.patch("/:id/start", async (req, res) => {
   try {
-    const rideId     = parseInt(req.params.id);
+    const rideId = parseInt(req.params.id);
     const { enteredOtp } = req.body;
 
     if (!enteredOtp) {
@@ -751,15 +799,18 @@ router.patch("/:id/start", async (req, res) => {
     }
 
     const ride = await prisma.ride.findUnique({ where: { id: rideId } });
-    if (!ride) return res.status(404).json({ success: false, error: "Ride not found" });
+    if (!ride)
+      return res.status(404).json({ success: false, error: "Ride not found" });
 
     if (ride.otp !== String(enteredOtp)) {
-      return res.status(400).json({ success: false, error: "Wrong OTP. Please try again." });
+      return res
+        .status(400)
+        .json({ success: false, error: "Wrong OTP. Please try again." });
     }
 
     const updated = await prisma.ride.update({
       where: { id: rideId },
-      data:  { status: "ONGOING", startedAt: new Date() },
+      data: { status: "ONGOING", startedAt: new Date() },
       include: { customer: { select: { id: true } } },
     });
 
@@ -780,14 +831,15 @@ router.patch("/:id/complete", async (req, res) => {
     const rideId = parseInt(req.params.id);
 
     const ride = await prisma.ride.findUnique({
-      where:   { id: rideId },
+      where: { id: rideId },
       include: { driver: true },
     });
-    if (!ride) return res.status(404).json({ success: false, error: "Ride not found" });
+    if (!ride)
+      return res.status(404).json({ success: false, error: "Ride not found" });
 
     const updated = await prisma.ride.update({
       where: { id: rideId },
-      data:  { status: "COMPLETED", completedAt: new Date() },
+      data: { status: "COMPLETED", completedAt: new Date() },
       include: { customer: { select: { id: true } } },
     });
 
@@ -795,21 +847,21 @@ router.patch("/:id/complete", async (req, res) => {
 
     await prisma.driverEarning.create({
       data: {
-        driverId:    ride.driverId,
-        amount:      driverEarning,
-        type:        "RIDE",
-        status:      "PENDING",
+        driverId: ride.driverId,
+        amount: driverEarning,
+        type: "RIDE",
+        status: "PENDING",
         description: `Ride #${ride.id} · ${ride.pickupAddress} → ${ride.dropAddress}`,
-        rideId:      ride.id,
+        rideId: ride.id,
       },
     });
 
     await prisma.driver.update({
       where: { id: ride.driverId },
       data: {
-        totalRides:    { increment: 1 },
+        totalRides: { increment: 1 },
         walletBalance: { increment: driverEarning },
-        lastSeenAt:    new Date(),
+        lastSeenAt: new Date(),
       },
     });
 
@@ -833,7 +885,7 @@ router.patch("/:id/cancel", async (req, res) => {
     const updated = await prisma.ride.update({
       where: { id: rideId },
       data: {
-        status:      "CANCELLED",
+        status: "CANCELLED",
         cancelledAt: new Date(),
         cancelReason: reason,
         cancelledBy,
@@ -872,7 +924,7 @@ router.patch("/driver/location", async (req, res) => {
     }
 
     await prisma.driverLocation.upsert({
-      where:  { driverId: parseInt(driverId) },
+      where: { driverId: parseInt(driverId) },
       update: { lat, lng, heading, speed, updatedAt: new Date() },
       create: { driverId: parseInt(driverId), lat, lng, heading, speed },
     });
@@ -893,13 +945,13 @@ router.patch("/driver/online", async (req, res) => {
 
     await prisma.driver.update({
       where: { id: parseInt(driverId) },
-      data:  { isOnline, lastSeenAt: new Date() },
+      data: { isOnline, lastSeenAt: new Date() },
     });
 
     // ✅ Seed Morigaon location when going online
     if (isOnline) {
       await prisma.driverLocation.upsert({
-        where:  { driverId: parseInt(driverId) },
+        where: { driverId: parseInt(driverId) },
         update: { updatedAt: new Date() },
         create: { driverId: parseInt(driverId), lat: 26.2461, lng: 92.3382 },
       });
