@@ -505,7 +505,7 @@ const express = require("express");
 const router = express.Router();
 const { getDistance } = require("geolib");
 const { calculateFareEstimates } = require("../helpers/fare.helpers");
-const { emitToUser } = require("../../src/socket/socket")
+const { emitToUser } = require("../../server")
 const prisma  = require("../config/database");
 
 // ─────────────────────────────────────────
