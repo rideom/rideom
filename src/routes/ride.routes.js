@@ -505,8 +505,13 @@ const express = require("express");
 const router = express.Router();
 const { getDistance } = require("geolib");
 const { calculateFareEstimates } = require("../helpers/fare.helpers");
-const { emitToUser } = require("../../server")
-const prisma  = require("../config/database");
+const { emitToUser } = require("../../server");
+const prisma = require("../config/database");
+const {
+  pushNewRideToDriver,
+  notifyCustomer,
+  notifyDriver,
+} = require("../../server");
 
 // ─────────────────────────────────────────
 // GET /api/rides/fare-estimate
@@ -703,7 +708,7 @@ router.post("/book", async (req, res) => {
     console.log("📡 Emitting to driver userId:", driver.userId);
 
     // ✅ Socket.io only — no push notification
-    const emitted = emitToUser(driver.userId, "new_ride_request", ride);
+    const emitted = pushNewRideToDriver(req.io, driver.userId, ride);
     console.log(
       "📡 Socket emit result:",
       emitted ? "✅ delivered" : "❌ driver not connected",
@@ -751,11 +756,7 @@ router.patch("/:id/accept", async (req, res) => {
     );
 
     // ✅ Socket only
-    const emitted = emitToUser(
-      updated.customerId,
-      "ride_status_update",
-      updated,
-    );
+    const emitted = notifyCustomer(req.io, updated.customerId, updated);
     console.log("📡 Customer notified:", emitted ? "✅" : "❌ not connected");
 
     return res.json({ success: true, data: { ride: updated } });
@@ -777,7 +778,7 @@ router.patch("/:id/arrived", async (req, res) => {
       include: { customer: { select: { id: true } } },
     });
 
-    emitToUser(updated.customerId, "ride_status_update", updated);
+    notifyCustomer(req.io, updated.customerId, updated);
     console.log("✅ Driver arrived — customer notified");
 
     return res.json({ success: true, data: { ride: updated } });
@@ -814,7 +815,7 @@ router.patch("/:id/start", async (req, res) => {
       include: { customer: { select: { id: true } } },
     });
 
-    emitToUser(updated.customerId, "ride_status_update", updated);
+    notifyCustomer(req.io, updated.customerId, updated);
     console.log("✅ Ride started");
 
     return res.json({ success: true, data: { ride: updated } });
@@ -865,7 +866,7 @@ router.patch("/:id/complete", async (req, res) => {
       },
     });
 
-    emitToUser(updated.customerId, "ride_status_update", updated);
+    notifyCustomer(req.io, updated.customerId, updated);
     console.log("✅ Ride completed — driver earned ₹" + driverEarning);
 
     return res.json({ success: true, data: { ride: updated, driverEarning } });
@@ -899,11 +900,9 @@ router.patch("/:id/cancel", async (req, res) => {
     });
 
     if (cancelledBy === "customer") {
-      emitToUser(updated.driver.userId, "ride_status_update", updated);
-      console.log("✅ Cancelled by customer — driver notified");
+      notifyDriver(req.io, updated.driver.userId, updated);
     } else {
-      emitToUser(updated.customerId, "ride_status_update", updated);
-      console.log("✅ Cancelled by driver — customer notified");
+      notifyCustomer(req.io, updated.customerId, updated);
     }
 
     return res.json({ success: true, data: { ride: updated } });
